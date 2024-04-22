@@ -242,15 +242,15 @@ def test_no_compatible_overload_found():
         typing_extensions.assert_never(result)
     assert (
         str(err.value)
-        == "No compatible overload found for function"
-        " 'simple_use_cases_test.test_no_compatible_overload_found.<locals>.my_function',"
-        " here is why:\nIncompatible with '(my_var: int) -> int' because too many"
-        " positional arguments\nIncompatible with '(my_var: int, second_var: float)"
-        " -> int' because There is a type hint mismatch for argument my_var: Object"
-        " 438.15 violates type hint <class 'int'>, as float 438.15 not instance of"
-        " int.\nIncompatible with '(my_var: str, second_var: float) -> str' because"
-        " There is a type hint mismatch for argument my_var: Object 438.15 violates"
-        " type hint <class 'str'>, as float 438.15 not instance of str."
+        == "No compatible overload found for function "
+        "'simple_use_cases_test.test_no_compatible_overload_found.<locals>.my_function',"
+        " here is why:\nIncompatible with '(my_var: int) -> int' because got an unexpected"
+        " keyword argument 'second_var'\nIncompatible with '(my_var: int, second_var: float) -> int'"
+        " because There is a type hint mismatch for argument my_var: Die_if_unbearable() value"
+        " 438.15 violates type hint <class 'int'>, as float 438.15 not instance of int.\nIncompatible"
+        " with '(my_var: str, second_var: float) -> str' because There is a type hint mismatch for"
+        " argument my_var: Die_if_unbearable() value 438.15 violates type hint <class 'str'>, as float"
+        " 438.15 not instance of str."
     )
 
 
