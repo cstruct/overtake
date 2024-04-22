@@ -92,7 +92,7 @@ def _find_arguments_to_check(
                 pos_found_types[argument_pos].add(argument.annotation)
 
             if (
-                argument.kind in (argument.KEYWORD_ONLY, argument.POSITIONAL_OR_KEYWORD)
+                argument.kind in (argument.KEYWORD_ONLY, argument.POSITIONAL_OR_KEYWORD, argument.VAR_POSITIONAL, argument.VAR_KEYWORD)
                 and argument.annotation not in pos_found_types[argument_pos]
             ):
                 kw_found_types[argument_name].add(argument.annotation)
