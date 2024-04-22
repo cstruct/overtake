@@ -58,13 +58,12 @@ def raise_if_no_implementations(
         additional_help = "Did you forget to use '@overload'?"
     raise OverloadsNotFoundError(
         "Overtake could not find the overloads for the function"
-        f" '{get_fully_qualified_name(overtaken_function)}'. "
-        + additional_help
+        f" '{get_fully_qualified_name(overtaken_function)}'. " + additional_help
     )
 
 
 def _find_arguments_to_check(
-    implementations: List[Tuple[Callable, inspect.Signature]]
+    implementations: List[Tuple[Callable, inspect.Signature]],
 ) -> Set[str]:
     """We optimise by writing arguments that have types that are changing.
 
@@ -78,30 +77,44 @@ def _find_arguments_to_check(
     pos_found_types = defaultdict(set)
     kw_found_types = defaultdict(set)
     for _, signature in implementations:
-        for argument_pos, (argument_name, argument) in enumerate(signature.parameters.items()):
+        for argument_pos, (argument_name, argument) in enumerate(
+            signature.parameters.items()
+        ):
             all_arguments.add(argument_name)
-            if (
-                get_origin(argument.annotation) == Unpack
-                or (isinstance(argument.annotation, str) and "Unpack" in argument.annotation)
+            if get_origin(argument.annotation) == Unpack or (
+                isinstance(argument.annotation, str) and "Unpack" in argument.annotation
             ):
                 # We don't know yet which arguments this unpack might conflict with so we check all
                 variadic_unpack_present = True
             if (
-                argument.kind in (argument.POSITIONAL_ONLY, argument.POSITIONAL_OR_KEYWORD)
+                argument.kind
+                in (argument.POSITIONAL_ONLY, argument.POSITIONAL_OR_KEYWORD)
                 and argument.annotation not in pos_found_types[argument_pos]
             ):
                 pos_arg_names[argument_pos].add(argument_name)
                 pos_found_types[argument_pos].add(argument.annotation)
 
             if (
-                argument.kind in (argument.KEYWORD_ONLY, argument.POSITIONAL_OR_KEYWORD, argument.VAR_POSITIONAL, argument.VAR_KEYWORD)
+                argument.kind
+                in (
+                    argument.KEYWORD_ONLY,
+                    argument.POSITIONAL_OR_KEYWORD,
+                    argument.VAR_POSITIONAL,
+                    argument.VAR_KEYWORD,
+                )
                 and argument.annotation not in pos_found_types[argument_pos]
             ):
                 kw_found_types[argument_name].add(argument.annotation)
     if variadic_unpack_present:
         return all_arguments
 
-    return set(chain(
-        *(pos_arg_names[pos] for pos, types in pos_found_types.items() if len(types) > 1),
-        (name for name, types in kw_found_types.items() if len(types) > 1)
-    ))
+    return set(
+        chain(
+            *(
+                pos_arg_names[pos]
+                for pos, types in pos_found_types.items()
+                if len(types) > 1
+            ),
+            (name for name, types in kw_found_types.items() if len(types) > 1),
+        )
+    )
