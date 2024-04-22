@@ -1,5 +1,5 @@
 import sys
-from typing import Iterable, Iterator, List, Sequence
+from typing import Iterable, List, Sequence
 
 from overtake import CompatibleOverloadNotFoundError, OverloadsNotFoundError, overtake
 from overtake.runtime_type_checkers.umbrella import AVAILABLE_TYPE_CHECKERS
