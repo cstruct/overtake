@@ -95,7 +95,7 @@ def _find_arguments_to_check(
                 argument.kind in (argument.KEYWORD_ONLY, argument.POSITIONAL_OR_KEYWORD)
                 and argument.annotation not in pos_found_types[argument_pos]
             ):
-                pos_found_types[argument_pos].add(argument.annotation)
+                kw_found_types[argument_name].add(argument.annotation)
     if variadic_unpack_present:
         return all_arguments
 
