@@ -16,7 +16,7 @@ def overtake(func: Callable[P, T], /) -> Callable[P, T]:
 
 
 @overload
-def overtake(*, runtime_type_checker: AVAILABLE_TYPE_CHECKERS = "basic") -> Callable:
+def overtake(*, runtime_type_checker: AVAILABLE_TYPE_CHECKERS = "basic") -> Callable[[Callable[P, T]], Callable[P, T]]:
     ...
 
 
