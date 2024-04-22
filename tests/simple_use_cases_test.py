@@ -108,7 +108,7 @@ def test_variable_number_of_arguments(runtime_type_checker: AVAILABLE_TYPE_CHECK
         return my_var + " new chars"
 
     @overtake(runtime_type_checker=runtime_type_checker)
-    def my_function(my_var, my_second=4.1) -> int | str:
+    def my_function(my_var, my_second) -> int | str:
         ...
 
     assert my_function("base", my_second=5.2) == "base new chars"
@@ -128,7 +128,7 @@ def test_variable_number_of_arguments_same_types(
         return my_var + my_second
 
     @overtake(runtime_type_checker=runtime_type_checker)
-    def my_function(my_var, my_second=None) -> int | float:
+    def my_function(my_var, my_second) -> int | float:
         ...
 
     assert isinstance(my_function(3), int)
@@ -234,7 +234,7 @@ def test_no_compatible_overload_found():
         return my_var
 
     @overtake(runtime_type_checker="beartype")
-    def my_function(my_var, second_var=None) -> int | str:
+    def my_function(my_var, second_var) -> int | str:
         ...
 
     with pytest.raises(CompatibleOverloadNotFoundError) as err:
@@ -287,7 +287,7 @@ def test_positional_argument_different_type_and_name(runtime_type_checker: AVAIL
         return 50
 
     @overtake(runtime_type_checker=runtime_type_checker)
-    def find_user_balance(name_or_id: str | int) -> int:
+    def find_user_balance(name_or_id: str | int, /) -> int:
         ...
 
     assert find_user_balance("Julie") == 40

@@ -1,4 +1,7 @@
+from functools import reduce
 import inspect
+from itertools import chain
+import operator
 import typing
 from typing import Callable, Dict, Generic, List, Optional, Set, Tuple, TypeVar, Union
 
@@ -43,6 +46,14 @@ class OvertakenFunctionRegistry(Generic[P, T]):
         return self.inspection_results.implementations
 
     @property
+    def has_defaults(self) -> bool:
+        return self.inspection_results.has_defaults
+
+    @property
+    def original_signature(self) -> inspect.Signature:
+        return self.inspection_results.original_signature
+
+    @property
     def arguments_to_check(self) -> Set[str]:
         return self.inspection_results.arguments_to_check
 
@@ -73,6 +84,8 @@ class OvertakenFunctionRegistry(Generic[P, T]):
         kwargs: Dict[str, object],
         signature: inspect.Signature,
     ) -> Union[IncompatibilityReason, None]:
+        if self.has_defaults:
+            args, kwargs = self.apply_defaults(args, kwargs, signature)
         try:
             bound_arguments = signature.bind(*args, **kwargs)
         except TypeError as e:
@@ -111,3 +124,27 @@ class OvertakenFunctionRegistry(Generic[P, T]):
                 return incompatibility_reason
 
         return None
+
+    def apply_defaults(self, args: Tuple[object, ...], kwargs: Dict[str, object], signature: inspect.Signature) -> tuple[Tuple[object, ...], Dict[str, object]]:
+        try:
+            bound_arguments = self.original_signature.bind_partial(*args, **kwargs)
+            bound_arguments.apply_defaults()
+            args_with_defaults = tuple(chain(*(
+                bound_arguments.arguments[name] if parameter.kind is parameter.VAR_POSITIONAL else [bound_arguments.arguments[name]]
+                for name, parameter
+                in bound_arguments.signature.parameters.items()
+                if parameter.kind in (parameter.POSITIONAL_ONLY, parameter.VAR_POSITIONAL)
+                or (parameter.kind is parameter.POSITIONAL_OR_KEYWORD and name in signature.parameters)
+            )))
+            kwargs_with_defaults = reduce(operator.ior, (
+                bound_arguments.arguments[name] if parameter.kind is parameter.VAR_KEYWORD else {name: bound_arguments.arguments[name]}
+                for name, parameter
+                in bound_arguments.signature.parameters.items()
+                if name in bound_arguments.arguments
+                and (
+                    parameter.kind in (parameter.KEYWORD_ONLY, parameter.VAR_KEYWORD)
+                    or (parameter.kind is parameter.POSITIONAL_OR_KEYWORD and name not in signature.parameters))
+            ), {})
+            return args_with_defaults, kwargs_with_defaults
+        except TypeError:
+            return args, kwargs

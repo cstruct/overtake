@@ -17,6 +17,8 @@ class OverloadsNotFoundError(Exception):
 
 class LazyOverloadsInspection:
     def __init__(self, overtaken_function: Callable):
+        self.original_signature = inspect.signature(overtaken_function)
+        self.has_defaults = any(p for p in self.original_signature.parameters.values() if p.default)
         self.implementations: List[Tuple[Callable, inspect.Signature]] = (
             find_implementations(overtaken_function)
         )
