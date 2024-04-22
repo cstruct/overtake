@@ -154,3 +154,7 @@ cython_debug/
 
 /main_benchmark.py.lprof
 /.python-version
+
+# Visual Studio Code
+.vscode/
+.history/
