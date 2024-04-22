@@ -133,8 +133,9 @@ class OvertakenFunctionRegistry(Generic[P, T]):
                 bound_arguments.arguments[name] if parameter.kind is parameter.VAR_POSITIONAL else [bound_arguments.arguments[name]]
                 for name, parameter
                 in bound_arguments.signature.parameters.items()
-                if parameter.kind in (parameter.POSITIONAL_ONLY, parameter.VAR_POSITIONAL)
-                or (parameter.kind is parameter.POSITIONAL_OR_KEYWORD and name in signature.parameters)
+                if name in bound_arguments.arguments
+                and (parameter.kind in (parameter.POSITIONAL_ONLY, parameter.VAR_POSITIONAL)
+                    or (parameter.kind is parameter.POSITIONAL_OR_KEYWORD and name in signature.parameters))
             )))
             kwargs_with_defaults = reduce(operator.ior, (
                 bound_arguments.arguments[name] if parameter.kind is parameter.VAR_KEYWORD else {name: bound_arguments.arguments[name]}
