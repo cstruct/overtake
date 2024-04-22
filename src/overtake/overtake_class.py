@@ -1,7 +1,4 @@
-from functools import reduce
 import inspect
-from itertools import chain
-import operator
 import typing
 from typing import Callable, Dict, Generic, List, Optional, Set, Tuple, TypeVar, Union
 
@@ -46,10 +43,6 @@ class OvertakenFunctionRegistry(Generic[P, T]):
         return self.inspection_results.implementations
 
     @property
-    def has_defaults(self) -> bool:
-        return self.inspection_results.has_defaults
-
-    @property
     def original_signature(self) -> inspect.Signature:
         return self.inspection_results.original_signature
 
@@ -60,9 +53,16 @@ class OvertakenFunctionRegistry(Generic[P, T]):
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
         incompatibilities = []
         for overloaded_implementation, signature in self.implementations:
-            incompatibility = self.find_incompatibility(args, kwargs, signature)
+            try:
+                bound_arguments = self.bind_with_defaults(args, kwargs, signature)
+                incompatibility = self.find_incompatibility(bound_arguments, signature)
+            except TypeError as e:
+                incompatibility = IncompatibilityBind(e)
+
             if incompatibility is None:
-                return overloaded_implementation(*args, **kwargs)
+                return overloaded_implementation(
+                    *bound_arguments.args, **bound_arguments.kwargs
+                )
             else:
                 incompatibilities.append(
                     IncompatibilityOverload(signature, incompatibility)
@@ -80,17 +80,9 @@ class OvertakenFunctionRegistry(Generic[P, T]):
 
     def find_incompatibility(
         self,
-        args: Tuple[object, ...],
-        kwargs: Dict[str, object],
+        bound_arguments: inspect.BoundArguments,
         signature: inspect.Signature,
     ) -> Union[IncompatibilityReason, None]:
-        if self.has_defaults:
-            args, kwargs = self.apply_defaults(args, kwargs, signature)
-        try:
-            bound_arguments = signature.bind(*args, **kwargs)
-        except TypeError as e:
-            return IncompatibilityBind(e)
-
         for argument_name in self.arguments_to_check:
             if argument_name not in bound_arguments.arguments:
                 continue
@@ -125,27 +117,48 @@ class OvertakenFunctionRegistry(Generic[P, T]):
 
         return None
 
-    def apply_defaults(self, args: Tuple[object, ...], kwargs: Dict[str, object], signature: inspect.Signature) -> tuple[Tuple[object, ...], Dict[str, object]]:
+    def bind_with_defaults(
+        self,
+        args: Tuple[object, ...],
+        kwargs: Dict[str, object],
+        signature: inspect.Signature,
+    ) -> inspect.BoundArguments:
+        bound_arguments = signature.bind(*args, **kwargs)
+
+        argument_defaults_to_apply = [
+            parameter
+            for parameter in signature.parameters.values()
+            if parameter.default == Ellipsis
+        ]
         try:
-            bound_arguments = self.original_signature.bind_partial(*args, **kwargs)
-            bound_arguments.apply_defaults()
-            args_with_defaults = tuple(chain(*(
-                bound_arguments.arguments[name] if parameter.kind is parameter.VAR_POSITIONAL else [bound_arguments.arguments[name]]
-                for name, parameter
-                in bound_arguments.signature.parameters.items()
-                if name in bound_arguments.arguments
-                and (parameter.kind in (parameter.POSITIONAL_ONLY, parameter.VAR_POSITIONAL)
-                    or (parameter.kind is parameter.POSITIONAL_OR_KEYWORD and name in signature.parameters))
-            )))
-            kwargs_with_defaults = reduce(operator.ior, (
-                bound_arguments.arguments[name] if parameter.kind is parameter.VAR_KEYWORD else {name: bound_arguments.arguments[name]}
-                for name, parameter
-                in bound_arguments.signature.parameters.items()
-                if name in bound_arguments.arguments
-                and (
-                    parameter.kind in (parameter.KEYWORD_ONLY, parameter.VAR_KEYWORD)
-                    or (parameter.kind is parameter.POSITIONAL_OR_KEYWORD and name not in signature.parameters))
-            ), {})
-            return args_with_defaults, kwargs_with_defaults
+            bound_default_arguments = self.original_signature.bind_partial(
+                *args, **kwargs
+            )
+            bound_default_arguments.apply_defaults()
         except TypeError:
-            return args, kwargs
+            return bound_arguments
+
+        args_with_defaults = args
+        kwargs_with_defaults = kwargs
+        for parameter in argument_defaults_to_apply:
+            if (
+                parameter.name in bound_arguments.arguments
+                or parameter.name not in bound_default_arguments.arguments
+            ):
+                continue
+
+            parameter_value = bound_default_arguments.arguments[parameter.name]
+            if parameter.kind in (
+                parameter.KEYWORD_ONLY,
+                parameter.POSITIONAL_OR_KEYWORD,
+                parameter.VAR_KEYWORD,
+            ):
+                kwargs_with_defaults = kwargs_with_defaults | {
+                    parameter.name: parameter_value
+                }
+            else:
+                args_with_defaults = (*args, parameter_value)
+
+        bound_arguments = signature.bind(*args_with_defaults, **kwargs_with_defaults)
+        bound_arguments.apply_defaults()
+        return bound_arguments
